@@ -10,3 +10,8 @@ To use the model, do the following steps:
 4. Run main.py, the scenarios will be generated and exported to an excel file.
 
 If you wish to fit your own model, see wind_model.fit_model() for an example. 
+
+Notes:
+1. The fitting of the quantile curves in fit_quantiles() has been implemented using the Gurobi python API, so currently
+   you need to have Gurobi installed to fit the model. It would be straightforward to replace the optimization problem 
+   with a Pyomo implementation.
