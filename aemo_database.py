@@ -8,18 +8,11 @@ import sqlite3
 import csv
 import datetime
 import pandas as pd
-from help_functions import str_to_date, create_select_list
 import numpy as np
 import time
 import matplotlib.pyplot as plt
-# plt.ioff()
-import pickle
-import statsmodels.api as sm
-import statsmodels.formula.api as smf
-from scipy.signal import butter, filtfilt, blackman
-from scipy.fftpack import fft, ifft, fftshift, ifftshift, fftfreq, rfft, rfftfreq
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+from help_functions import str_to_date, create_select_list
 """ 
 # List of wind farms:
 NOTE: This list was made by obtaining all DUIDs with WF in the name, and then manually checking similarity between
@@ -90,14 +83,6 @@ wind_latlon = {
     'MACARTH1':[-38.009698109704246, 142.19470124339418],
     'BALDHWF1':[-38.6973409404194, 145.95180550500424],
 }
-
-# Ararat VIC 3377, Australia
-# -37.26228480761284, 143.07848659783988
-# Macarthur wind farm
-# -38.009698109704246, 142.19470124339418
-# Bald Hills Wind Farm
-# -38.6973409404194, 145.95180550500424
-# f,ax = plt.subplots()
 
 
 def _time2table_(timestr,table_type='dispatch'):
