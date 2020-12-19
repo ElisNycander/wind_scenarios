@@ -40,6 +40,9 @@ qrange = (0.05,0.95)
 # all time series are simply averaged over each hour
 hourly = False
 
+noise_scale = 0.3
+# use this to scale the high-frequency noise added to the scenarios, may be set to 0
+
 ####### END OPTIONS ##########
 
 
@@ -48,6 +51,7 @@ import pandas as pd
 
 m = WindModel(name='v1',path=path,wpd_db=db,wfc_db=db)
 m.load_model()
+m.hf_scale = noise_scale
 rls,data = m.generate_scenarios(nscen=nscen,date=date,qrange=qrange,seed=seed,hourly_values=hourly)
 plot_scenarios_minmax(rls,data,m.path,tag='default',qrange=qrange)
 
