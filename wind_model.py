@@ -646,7 +646,8 @@ class WindModel:
             err_norm = pd.DataFrame(dtype=float, index=pred_err.index, columns=pred_err.columns)
             # err_norm_lp = pd.DataFrame(dtype=float, index=pred_err.index, columns=pred_err.columns)
             for wf in self.units:
-                err_norm[wf] = norm.ppf(err_un[wf])
+                nonan = err_un[wf].isna() == False
+                err_norm.loc[nonan,wf] = norm.ppf(err_un.loc[nonan,wf])
                 # err_norm_lp[wf] = norm.ppf(err_un_lp[wf])
 
             # %%
@@ -659,7 +660,8 @@ class WindModel:
             f.set_size_inches(18,8)
             for i, wf in enumerate(self.units):
                 ax = f.add_subplot(2,3,i+1)
-                plt.hist(err_norm[wf], bins=histbins, edgecolor='black', linewidth=1.2, density=True)
+                plt.hist(err_norm.loc[err_norm[wf].isna()==False,wf],
+                         bins=histbins, edgecolor='black', linewidth=1.2, density=True)
                 # plt.density(err_norm[wf],bins=histbins,edgecolor='black',linewidth=1.2)
                 plt.plot(xvals, yvals, lw=1.5)
                 plt.title(f'{wf}')
@@ -668,8 +670,8 @@ class WindModel:
             # f = plt.figure()
             for i, wf in enumerate(self.units):
                 ax = f.add_subplot(2,3, i + 4)
-                plt.hist(pred_err[wf] / pred_err[wf].std(), bins=histbins, edgecolor='black', linewidth=1.2,
-                         density=True)
+                plt.hist(pred_err.loc[pred_err[wf].isna()==False,wf] / pred_err[wf].std(),
+                         bins=histbins, edgecolor='black', linewidth=1.2, density=True)
                 plt.plot(xvals, yvals, lw=1.5)
                 # plt.title(f'{wf}')
             if self.plot_titles:
@@ -1443,7 +1445,7 @@ class WindModel:
             if wpd.loc[timerange,:].isna().sum().sum() > 0:
                 exclude_days_nan.append(timerange[0])
 
-        print(exclude_days_nan)
+        # print(exclude_days_nan)
         model = {}
         # %%
         for unit in self.units:
@@ -2585,7 +2587,7 @@ def fit_model():
     # m.enddate = '20200228'
     # m.enddate = '20200331'
     m.enddate = '20191030'
-    m.eps_figures = True
+    m.eps_figures = False
     m.plot_titles = False
     m.cov_resolution = '5min'
     m.cov_quant_filter = True
@@ -2612,20 +2614,20 @@ def fit_model():
 
     ## FIT MODEL ##
     # load data and preprocessing
-    # m.load_data()
-    # m.filter_data()
+    m.load_data()
+    m.filter_data()
     # # fitting model
-    # m.fit_noise()
-    # m.fit_quantiles()
-    # m.fit_covariance()
+    m.fit_noise()
+    m.fit_quantiles()
+    m.fit_covariance()
 
     m.save_model() # save model objects as pickle file
     # Saved model can be loaded with: m.load_model()
-    m.load_model()
+    # m.load_model()
 
     # validate model
     seed = 1
-    # m.validate(ndays=60,startdate='20190801',tag='v1',use_hf_model=True,seed=seed)
+    m.validate(ndays=60,startdate='20190801',tag='v1',use_hf_model=True,seed=seed)
 
     # generate scenarios
     date = '20190811'
@@ -2635,277 +2637,27 @@ def fit_model():
 
 if __name__ == "__main__":
 
+    fit_model()
     pd.set_option('display.max_rows',20)
     pd.set_option('display.max_columns',None)
 
     # fit_model()
     #%%
-    path = 'C:/Users/elisn/Box Sync/Python/wind_scenarios/data'
-    db = 'D:/Data/aemo_small.db'
-    date = '20190801'
-    nscen = 10
-    seed = 1
-    qrange = (0.02,0.98)
-    #
-    #
-    m = WindModel(name='v1',path=path,wpd_db=db,wfc_db=db)
-    m.load_model()
-    rls,data = m.generate_scenarios(nscen=nscen,date=date,qrange=qrange,seed=seed,hourly_values=False)
-    # plot_scenarios_minmax(rls,data,m.path,tag='default',qrange=qrange)
-
-
-    writer = pd.ExcelWriter(f'{path}/scenarios.xlsx',engine='xlsxwriter')
-    rls.to_excel(writer,sheet_name='scenarios')
-    data.to_excel(writer,sheet_name='data')
-    writer.save()
-    #%% print scenarios to excel
-
-
-
-    # nscen = 10
+    # path = 'C:/Users/elisn/Box Sync/Python/wind_scenarios/data'
+    # db = 'D:/Data/aemo_small.db'
     # date = '20190801'
-    # seed=None
-    # use_hf_model = True
-    # scen_base='forecast'
-    # lead_time = 1
-    # cut_extreme=True
-    # qrange=(0.05,0.95)
-    # """ Generate scenarios from model
-    # Using quantile fit
-    #
-    # scen_base: The synthetic errors are added to the scenario base variable to create the scenarios
-    #     forecast - use forecast as base for scenarios
-    #     production - use production data as base for scenarios
-    #
-    # Return:
-    #     scenarios [range(1,nscen+1)]
-    #     data: [forecast,production]
-    # """
-    #
-    # starttime = f'{date}:{m.start_hour}'
-    #
-    # # %% get low-frequency scenarios
-    # cov = m.cor_quant[f'l{lead_time}']
-    #
-    # units = m.units
-    # if m.cov_resolution == '30min':
-    #     nT = 24 * 2
-    #     tstep = 6
-    # else:
-    #     nT = 24 * 12
-    #     tstep = 1
-    #
-    # # create time axis
-    # nVars = cov.shape[0]
-    # timerange = pd.date_range(start=str_to_date(starttime),
-    #                           end=str_to_date(starttime) + datetime.timedelta(hours=24),
-    #                           freq='5min')
-    # endtime = timerange[-1].strftime('%Y%m%d:%H%M')
+    # nscen = 10
+    # seed = 1
+    # qrange = (0.02,0.98)
+    # #
+    # #
+    # m = WindModel(name='v1',path=path,wpd_db=db,wfc_db=db)
+    # m.load_model()
+    # rls,data = m.generate_scenarios(nscen=nscen,date=date,qrange=qrange,seed=seed,hourly_values=False)
+    # # plot_scenarios_minmax(rls,data,m.path,tag='default',qrange=qrange)
     #
     #
-    # cols = pd.MultiIndex.from_product([m.units,['fc','pd','pd_lp','max','min']],names=['unit','type'])
-    # data = pd.DataFrame(index=timerange,columns=cols,dtype=float)
-    #
-    # wpd = m.wpd_db.select_data(table_type='dispatch', categories=units, starttime=starttime,
-    #                               endtime=endtime) / m.capacity
-    # wfc = m.wfc_db.select_forecast_data_full(startdate=date,
-    #                                             enddate=(str_to_date(date) + datetime.timedelta(hours=24)).strftime(
-    #                                                 '%Y%m%d'),
-    #                                             lead_times=[lead_time],
-    #                                             categories=units)
-    # wfc.columns = wfc.columns.get_level_values(0)
-    # wfc = wfc.iloc[0:wfc.__len__() // 2 + 1, :] / m.capacity
-    # for wf in m.units:
-    #     data.loc[:,(wf,'pd')] = wpd[wf]
-    #     data.loc[:,(wf,'pd_lp')] = butter_lowpass_filter(wpd[wf],m.lp_cutoff,m.fs,m.lp_order)
-    #     # data.loc[:,(wf,'fc')] = wfc[wf]
-    #     # data.loc[:,(wf,'fc_lp')] = butter_lowpass_filter(wfc[wf],m.lp_cutoff,m.fs,m.lp_order)
-    # data.loc[:,(slice(None),'fc')] = np.array(make_5min_forecast(wfc, m.lp_cutoff, m.fs, m.lp_order))
-    #
-    # # Note: Should not cut off distribution when generating quantile curves, otherwise it will never be possible
-    # # to get the curves to go to min/max production
-    # for wf in m.units:
-    #     fit = pd.DataFrame(m.quant_fits[lead_time][wf], columns=['q'] + m.quant_coeff)
-    #     bins = m.quant_bins[lead_time][wf]
-    #     data.loc[:, (wf, 'max')] = - uniform2cdf(fc=data.loc[:, (wf, 'fc')],
-    #                                              un=qrange[0] * np.ones(timerange.__len__()),
-    #                                              bins=bins, fit=fit, cut_extreme=False) + data.loc[:, (wf, 'fc')]
-    #     data.loc[:, (wf, 'min')] = - uniform2cdf(fc=data.loc[:, (wf, 'fc')],
-    #                                              un=qrange[1] * np.ones(timerange.__len__()),
-    #                                              bins=bins, fit=fit, cut_extreme=True) + data.loc[:, (wf, 'fc')]
-    #
-    #     data.loc[data[(wf, 'min')] < 0, (wf, 'min')] = 0
-    #     data.loc[data[(wf, 'max')] > 1, (wf, 'max')] = 1
-    #
-    #
-    # # chose data for scenario 0, either filtered or unfiltered, production or forecast
-    # wpd_sc0 = pd.DataFrame(dtype=float, index=timerange, columns=m.units)
-    # for u in units:
-    #     if scen_base == 'production':
-    #         if use_hf_model:
-    #             wpd_sc0[u] = data.loc[:,(u,'pd_lp')]
-    #         else:
-    #             wpd_sc0[u] = data.loc[:,(u,'pd')]
-    #     else:
-    #         wpd_sc0[u] = data.loc[:,(u,'fc')]
-    #
-    # multi_cols = pd.MultiIndex.from_product(
-    #     [units, range(1,nscen + 1)], names=['unit', 'scenario']
-    # )
-    # rls = pd.DataFrame(index=timerange, columns=multi_cols, dtype=float)
-    #
-    # for u in units:
-    #     # enter production as scenario 0
-    #     # rls.loc[:, (u, 0)] = wind_data[u]
-    #     # rls.loc[:, (u, 0)] = wpd_sc0[u]
-    #     # enter enter initial value into all scenarios
-    #     # rls.loc[timerange[0], (u, slice(None))] = rls.at[timerange[0], (u, 0)]
-    #     rls.loc[timerange[0], (u, slice(None))] = wpd_sc0.at[timerange[0],u]
-    #
-    # # %% generate high-frequency component of scenarios
-    # if not seed is None:
-    #     np.random.seed(seed=seed)
-    #
-    # hf_rls = pd.DataFrame(0.0, index=timerange, columns=multi_cols)
-    # if use_hf_model:
-    #     for u in units:
-    #         # check if noise has bin fitted using regimes:
-    #         if 0 in m.noise[u]:
-    #             # use regimes
-    #             pass
-    #             bins = m.noise[u]['bins']
-    #             if m.hf_binvar == 'fc':
-    #                 avg_prod = data.loc[:,(u,'fc')].mean()
-    #             else:
-    #                 avg_prod = data.loc[:,(u,'pd')].mean()
-    #             ibin = 0
-    #             while ibin < m.hf_nbins - 1 and avg_prod > bins[ibin+1]:
-    #                 ibin += 1
-    #             arr = m.create_noise(
-    #                 nsamp=24 * 12,
-    #                 nscen=nscen,
-    #                 spectrum=m.noise[u][ibin]['spectrum'],
-    #                 std_real=m.noise[u][ibin]['std_real'],
-    #                 std_imag=m.noise[u][ibin]['std_imag'])
-    #             # print(f'Using hf bin {ibin} for {u}')
-    #
-    #         else:
-    #             arr = m.create_noise(
-    #                 nsamp=24 * 12,
-    #                 nscen=nscen,
-    #                 spectrum=m.noise[u]['spectrum'],
-    #                 std_real=m.noise[u]['std_real'],
-    #                 std_imag=m.noise[u]['std_imag'])
-    #         for sidx in range(1, arr.__len__() + 1):
-    #             hf_rls.loc[timerange[1:], (u, sidx)] = arr[sidx - 1]
-    #
-    # # %% generate low-frequency component of scenarios
-    # rands = np.random.multivariate_normal(mean=np.zeros(nVars), cov=cov, size=nscen)
-    #
-    # # % transform to uniform distribution
-    # from scipy.stats import norm
-    # uni = norm.cdf(rands)
-    #
-    # # f = plt.figure()
-    # # plt.hist(uni[0],bins=10)
-    # # % transform to error
-    #
-    # err = np.zeros(shape=rands.shape, dtype=float)
-    # tidxs = [timerange[i] for i in range(tstep, timerange.__len__(), tstep)]
-    #
-    # for ii, wf in enumerate(units):
-    #     bins = m.quant_bins[lead_time][wf]
-    #     fit = pd.DataFrame(m.quant_fits[lead_time][wf], columns=['q'] + m.quant_coeff)
-    #     # Note: Take actual production as forecast, assuming zero mean error
-    #     fc = wpd_sc0.loc[tidxs, wf]
-    #     for i in range(rands.shape[0]):
-    #         err[i, ii * nT:(ii + 1) * nT] = uniform2cdf(fc=fc, un=uni[i, ii * nT:(ii + 1) * nT], bins=bins, fit=fit, cut_extreme=cut_extreme)
-    #
-    # # %% dataframe with erros, only reshaping structure of data
-    # # Note that when doing quantile fit error = forecast - production => prod = forecast - error,
-    # # hence add error with negative sign
-    # columns = pd.MultiIndex.from_product([units, range(1, nscen + 1)], names=['unit', 'scen'])
-    # errs = pd.DataFrame(dtype=float, index=timerange, columns=columns)
-    # if m.cov_resolution == '30min':  # then interpolate errors between 30-min intervals
-    #     for sidx in range(nscen):
-    #         for vidx, er in enumerate(err[sidx]):
-    #             tidx = int(np.remainder(vidx, nT))
-    #             u = units[np.floor_divide(vidx, nT)]
-    #             errs.at[timerange[tidx * 6 + 1], (u, sidx + 1)] = - er
-    # else:  # rands with 5-min resolution
-    #     for sidx in range(nscen):
-    #         for uidx, u in enumerate(units):
-    #             errs.loc[errs.index[1:], (u, sidx + 1)] = - err[sidx][uidx * (nVars // 3):(uidx + 1) * (nVars // 3)]
-    #
-    # if m.cov_resolution == '30min':
-    #     errs_full = errs.interpolate(method='linear')
-    # else:
-    #     errs_full = errs
-    # # %%
-    #
-    # # nzero_req = 4 # all periods with more than this number of zero values will not have high-frequency noise added
-    # scenarios_lp = pd.DataFrame(0.0,index=timerange,columns=errs_full.columns)
-    # hf_dummy = pd.DataFrame(1,index=timerange,columns=errs_full.columns,dtype=bool)
-    # for u in units:
-    #     for s in range(1,nscen+1):
-    #         scen = wpd_sc0.loc[:,u] + errs_full.loc[:,(u,s)]
-    #         scenarios_lp.loc[:,(u,s)] = scen
-    #
-    #         # check which periods should have noise added
-    #         sidx = 0 # start of current zero period
-    #         zero_flag = False
-    #         for idx in range(scenarios_lp.__len__()):
-    #
-    #             if not zero_flag and scen.iat[idx] <= 0: # start of new zero period
-    #                 zero_flag = True
-    #                 sidx = idx
-    #             elif zero_flag and (scen.iat[idx] > 0 or idx == scen.__len__() - 1): # end of zero period
-    #                 zero_flag = False
-    #                 plen = idx - sidx
-    #                 # set values to 0 if length exceedds requirement
-    #                 if plen >= m.hf_nzero_nonoise:
-    #                     # hf_dummy[(u,s)].iloc[idx:sidx] = False
-    #                     hf_dummy.loc[timerange[sidx]:timerange[idx-1],(u,s)] = False
-    #
-    # # get production from errors
-    # for u in units:
-    #     for i in errs_full.index[1:]:
-    #         for s in range(1, nscen + 1):
-    #             if m.hf_noise_zeroprod or hf_dummy.at[i,(u,s)]: # add hf noise
-    #                 realz = np.min(
-    #                     [1, np.max([0, wpd_sc0.at[i, u] \
-    #                                 + errs_full.at[i, (u, s)] + m.hf_scale * hf_rls.at[i, (u, s)]])])
-    #             else: # don't add hf noise
-    #                 realz = np.min([1, np.max([0, wpd_sc0.at[i, u] + errs_full.at[i, (u, s)] ])])
-    #             rls.at[i, (u, s)] = realz
-    #
-    # # return rls,data
-    #
-    #
-    # #%%
-    # time_hourly = [t for t in rls.index if t.strftime('%M') == '30']
-    #
-    # rls_hourly = pd.DataFrame(index=time_hourly,columns=rls.columns)
-    # data_hourly = pd.DataFrame(index=time_hourly,columns=data.columns)
-    #
-    # rls_hourly.iloc[0,:] = rls.iloc[0,:]
-    # data_hourly.iloc[0,:] = data.iloc[0,:]
-    #
-    # for t in time_hourly[1:]:
-    #     idxs = pd.date_range(start=t.to_pydatetime()+datetime.timedelta(seconds=-60*55),end=t,freq='5min')
-    #
-    #     rls_hourly.loc[t,:] = rls.loc[idxs,:].mean()
-    #     data_hourly.loc[t,:] = data.loc[idxs,:].mean()
-    #
-    #
-    # scen = 1
-    # unit = 'ARWF1'
-    #
-    # #%%
-    # f,ax = plt.subplots()
-    #
-    # rls_hourly[(unit,scen)].plot(ax=ax)
-    # rls[(unit,scen)].plot(ax=ax)
-    #
-    #
-    # plt.show()
+    # writer = pd.ExcelWriter(f'{path}/scenarios.xlsx',engine='xlsxwriter')
+    # rls.to_excel(writer,sheet_name='scenarios')
+    # data.to_excel(writer,sheet_name='data')
+    # writer.save()
