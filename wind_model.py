@@ -251,7 +251,7 @@ def uniform2cdf(fc,un,bins,fit,cut_extreme=False):
     return err
 
 
-def make_5min_forecast(wfc,lp_cutoff,fs,lp_order):
+def make_5min_forecast(wfc,lp_cutoff,fs,lp_order,lp_filter=True):
 
     start = wfc.index[0]
     end = wfc.index[-1]
@@ -271,13 +271,14 @@ def make_5min_forecast(wfc,lp_cutoff,fs,lp_order):
 
     # %%
     # wfc_5min_lp = pd.DataFrame(index=err_idx, columns=m.units, dtype=float)
-    for c in wfc_5min.columns:
-        nan_idx = wfc_5min[c].isna()
-        wfc_5min.loc[nan_idx,c] = 0
-        wfc_5min[c] = butter_lowpass_filter(wfc_5min[c], lp_cutoff, fs, lp_order)
-        wfc_5min.loc[nan_idx,c] = np.nan
+    if lp_filter:
+        for c in wfc_5min.columns:
+            nan_idx = wfc_5min[c].isna()
+            wfc_5min.loc[nan_idx,c] = 0
+            wfc_5min[c] = butter_lowpass_filter(wfc_5min[c], lp_cutoff, fs, lp_order)
+            wfc_5min.loc[nan_idx,c] = np.nan
 
-    wfc_5min[wfc_5min < 0] = 0
+        wfc_5min[wfc_5min < 0] = 0
 
     return wfc_5min
 
@@ -1818,7 +1819,7 @@ class WindModel:
         return wn_hp
 
     def generate_scenarios(self,nscen = 10,date = '20190801',seed=None,use_hf_model = True,scen_base='forecast',lead_time = 1,cut_extreme=True,qrange=(0.05,0.95),
-                                hourly_values=False):
+                                hourly_values=False,reduce_initial_errors=False,reduce_error_time=2):
         """ Generate scenarios from model
         Using quantile fit
 
@@ -1830,6 +1831,7 @@ class WindModel:
             scenarios [range(1,nscen+1)]
             data: [forecast,production]
         """
+        fs = 12 # number of samples per hour
 
         starttime = f'{date}:{self.start_hour}'
 
@@ -2016,17 +2018,26 @@ class WindModel:
                             # hf_dummy[(u,s)].iloc[idx:sidx] = False
                             hf_dummy.loc[timerange[sidx]:timerange[idx-1],(u,s)] = False
 
+        # make scaling factor for errors (used to decrease initial errors, to prevent too quick divergence of scenarios)
+        error_scale = np.ones(nT)
+        if reduce_initial_errors:
+            for i in range(1,int(reduce_error_time*fs)+1):
+                error_scale[i-1] = i / (reduce_error_time*fs)
+
         # get production from errors
         for u in units:
+            tidx = 0
             for i in errs_full.index[1:]:
+                scale = error_scale[tidx]
                 for s in range(1, nscen + 1):
                     if self.hf_noise_zeroprod or hf_dummy.at[i,(u,s)]: # add hf noise
                         realz = np.min(
                             [1, np.max([0, wpd_sc0.at[i, u] \
-                                        + errs_full.at[i, (u, s)] + self.hf_scale * hf_rls.at[i, (u, s)]])])
+                                        + scale * (errs_full.at[i, (u, s)] + self.hf_scale * hf_rls.at[i, (u, s)])  ])])
                     else: # don't add hf noise
-                        realz = np.min([1, np.max([0, wpd_sc0.at[i, u] + errs_full.at[i, (u, s)] ])])
+                        realz = np.min([1, np.max([0, wpd_sc0.at[i, u] + scale * errs_full.at[i, (u, s)] ])])
                     rls.at[i, (u, s)] = realz
+                tidx += 1
 
         if hourly_values: # compute hourly values by taking average over hours
             time_hourly = [t for t in rls.index if t.strftime('%M') == '30']
@@ -2565,6 +2576,7 @@ def plot_scenarios_minmax(rls, data, fig_path = Path('D:/Data/AEMO/Figures'),tag
         data.loc[:,(wf,'min')].plot(ax=ax,linestyle='dashed',color='black',label=lab_min)
         data.loc[:,(wf,'max')].plot(ax=ax,linestyle='dashed',color='black',label=lab_max)
 
+        plt.ylim([0,1])
         plt.grid()
         plt.legend()
         if titles:
@@ -2637,27 +2649,39 @@ def fit_model():
 
 if __name__ == "__main__":
 
-    fit_model()
+    # fit_model()
     pd.set_option('display.max_rows',20)
     pd.set_option('display.max_columns',None)
 
     # fit_model()
+    # plot_example_figures()
     #%%
-    # path = 'C:/Users/elisn/Box Sync/Python/wind_scenarios/data'
-    # db = 'D:/Data/aemo_small.db'
-    # date = '20190801'
-    # nscen = 10
-    # seed = 1
-    # qrange = (0.02,0.98)
-    # #
-    # #
-    # m = WindModel(name='v1',path=path,wpd_db=db,wfc_db=db)
-    # m.load_model()
+    path = 'C:/Users/elisn/Box Sync/Python/wind_scenarios/data'
+    db = 'D:/Data/aemo_new.db'
+    date = '20190801'
+    nscen = 10
+    seed = 1
+    qrange = (0.05,0.95)
+    #
+    #
+    m = WindModel(name='v1',path=path,wpd_db=db,wfc_db=db)
+
+    m.load_model()
+
+
+    m.enddate = '20190810'
+
+
+
+    m.load_data()
+    m.filter_data()
     # rls,data = m.generate_scenarios(nscen=nscen,date=date,qrange=qrange,seed=seed,hourly_values=False)
-    # # plot_scenarios_minmax(rls,data,m.path,tag='default',qrange=qrange)
-    #
-    #
-    # writer = pd.ExcelWriter(f'{path}/scenarios.xlsx',engine='xlsxwriter')
-    # rls.to_excel(writer,sheet_name='scenarios')
-    # data.to_excel(writer,sheet_name='data')
-    # writer.save()
+
+
+    #%% reduce initial uncertainty
+
+    rls,wind_data = m.generate_scenarios(reduce_initial_errors=True,reduce_error_time=0.5)
+    rls.loc[:,('ARWF1',slice(None))].plot()
+
+    #%%
+
