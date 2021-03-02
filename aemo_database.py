@@ -633,62 +633,6 @@ def find_duid_predispatch(file_path='D:/Data/AEMO/PreDispatch',file_nr=0):
 
     return duids
 
-def plot_wind_farm_map():
-
-    # fig_path = 'C:/Users/elisn/Box Sync/Papers/C4 - Wind scenarios/Figures'
-    fig_path = 'D:/wind_scenarios/Figures'
-    Path(fig_path).mkdir(exist_ok=True,parents=True)
-    units = ['ARWF1','MACARTH1','BALDHWF1']
-    """ Create Basemap projection corresponding to efas data """
-    proj = 'laea'
-    lat_0 = -38.95
-    lat_0 = -39.4
-    lon_0 = 144.5
-    width = 1*1e6
-    height = 0.6*1e6
-    # return m
-    msize = 10
-    offs1 = 2.5e4
-
-    from mpl_toolkits.basemap import Basemap
-
-    m = Basemap(projection=proj, resolution='l',
-                width=width, height=height,
-                lat_0=lat_0, lon_0=lon_0)
-
-    f,ax=plt.subplots()
-    f.set_size_inches(6,3.5)
-    m.drawcoastlines()
-    m.fillcontinents()
-    # m.drawmeridians()
-    # m.drawparallels()
-    # m.plot()
-
-    for u in units:
-        xy = m(wind_latlon[u][1],wind_latlon[u][0])
-        plt.plot(xy[0],xy[1],marker='o',markersize=msize,color='green',markeredgecolor='black')
-        # m.scatter(xy[0],xy[1],marker='o',edgecolors='black',color='green')
-        plt.text(xy[0]+offs1,xy[1],u)
-
-    bass_latlon = [-39.686821378896616, 145.25306912813292]
-    tasm_latlon = [-41.976073008838834, 145.80081762407574]
-    melb_latlon = [-37.81300776034128, 144.9677902316384]
-
-
-    xy = m(melb_latlon[1],melb_latlon[0])
-    plt.plot(xy[0],xy[1],marker='s',markersize=msize,color='red',markeredgecolor='black')
-    plt.text(xy[0]+offs1,xy[1],'Melbourne')
-
-    xy = m(bass_latlon[1],bass_latlon[0])
-    plt.text(xy[0],xy[1],'Bass Strait')
-
-    xy = m(tasm_latlon[1],tasm_latlon[0])
-    plt.text(xy[0],xy[1],'Tasmania')
-
-    m.drawmapscale(141,-41,0,0,100)
-
-    plt.savefig(Path(fig_path)/f'wind_farms_map.png')
-    plt.savefig(Path(fig_path)/f'wind_farms_map.eps')
 
 if __name__ == "__main__":
 
