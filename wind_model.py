@@ -747,7 +747,7 @@ class WindModel:
 
             # %%
             fig = plt.gcf()
-            fig.set_size_inches(14,6.5)
+            fig.set_size_inches(11,4)
             fig.clf()
 
             # ax.cla()
@@ -1273,7 +1273,7 @@ class WindModel:
 
                     fig = plt.gcf()
                     fig.clf()
-                    fig.set_size_inches(14,5)
+                    fig.set_size_inches(11,3.5)
                     # spec = fig.add_gridspec(ncols=3,nrows=1,width_ratios=[4,0.1,5])
                     spec = fig.add_gridspec(ncols=2,nrows=1,width_ratios=[4,5])
 
@@ -1391,7 +1391,7 @@ class WindModel:
 
                     f = plt.gcf()
                     f.clf()
-                    f.set_size_inches(5,3)
+                    f.set_size_inches(5,2.5)
                     ax = f.add_subplot(1,1,1)
                     ax.hist(un_data, bins=20, edgecolor='black', linewidth=1, density=True)
                     if self.plot_titles:
@@ -2171,7 +2171,7 @@ class WindModel:
 
         #%% plot spectrum
         f,axs = plt.subplots(2,3,sharey=False)
-        f.set_size_inches(12.5,9)
+        f.set_size_inches(12.5,7)
         # f = plt.figure()
         for ax,unit in zip(axs[1],self.units):
             # ax = f.add_subplot(2,3,pidx+1,sharey)
@@ -2585,12 +2585,14 @@ def plot_scenarios_minmax(rls, data, fig_path = Path('D:/Data/AEMO/Figures'),tag
         plt.savefig(fig_path / f'scenarios_minmax_{tag}_{wf}.png')
         plt.savefig(fig_path / f'scenarios_minmax_{tag}_{wf}.eps')
 
+
 def fit_model():
 
-    path = 'C:/Users/elisn/Box Sync/Python/wind_scenarios/data/aemo_tiny.db'
     db = 'D:/Data/aemo_small.db'
+    path = 'D:/wind_scenarios'
+    name = 'v2'
 
-    m = WindModel(name='v2',wfc_db=db,wpd_db=db)
+    m = WindModel(name=name,wfc_db=db,wpd_db=db,path=path)
 
     ## OPTIONS ##
     m.units = ['ARWF1','MACARTH1','BALDHWF1']
@@ -2639,13 +2641,80 @@ def fit_model():
 
     # validate model
     seed = 1
-    m.validate(ndays=60,startdate='20190801',tag='v1',use_hf_model=True,seed=seed)
+    m.validate(ndays=60,startdate='20190801',tag=name,use_hf_model=True,seed=seed)
 
     # generate scenarios
     date = '20190811'
     nscen = 10
     rls,data = m.generate_scenarios(nscen=nscen,cut_extreme=True,date=date,qrange=(0.02,0.98),use_hf_model=True)
-    plot_scenarios_minmax(rls,data,m.path,tag='default',qrange=(2,98))
+    plot_scenarios_minmax(rls,data,m.path,tag=name,qrange=(2,98))
+
+def fit_model_paper():
+    """ Fit model for use in paper, requires more data """
+    #%%
+    path = 'D:/wind_scenarios/'
+    tag = 'v1'
+    db = 'D:/Data/aemo_new.db'
+    example_date = '20190811'
+    example_nscen = 10
+    validate_date = '20200301'
+    validate_seed = 1
+    validate_days = 100
+    qrange = (0.02,0.98)
+
+    m = WindModel(name=tag,wfc_db=db,wpd_db=db,path=path)
+
+    ## OPTIONS ##
+    m.units = ['ARWF1','MACARTH1','BALDHWF1']
+    m.startdate = '20190801'
+    # m.startdate = '20200301'
+    m.enddate = '20200228'
+    # m.enddate = '20200331'
+    # m.enddate = '20191030'
+    m.eps_figures = True
+    m.plot_titles = False
+    m.cov_resolution = '5min'
+    m.cov_quant_filter = True
+    m.cov_quant_cutoff = 0.1
+    m.cov_quant_interp = 'rect'
+    m.hf_linear_scale = True
+    m.hf_nbins = 3
+    m.hf_lead_time = 1  # lead time for forecast used to create regimes when fitting noise
+    m.hf_binvar = 'fc'  # fc/pd, to use forecast or production for creating regimes
+    m.hf_plot_figures = True
+    m.hf_scale = 0.3
+    m.quant_resolution = '30min'
+    m.quant_solver_output = True
+    m.quant_plots = True
+    m.quant_cofit = True
+    m.quant_remove_outliers = True
+    m.quant_remove_zero_periods = True
+    m.quant_nzero_hours_remove = 10
+    m.quant_qvals = np.array([0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99])
+    m.quant_nbins = 3
+    m.quant_set_bins = [-0.1,0.3,0.7,1.1]
+    m.lead_times = [1]
+    m.scen_base = 'forecast'
+
+    ## FIT MODEL ##
+    # load data and preprocessing
+    m.load_data()
+    m.filter_data()
+    # fitting model
+    m.fit_noise()
+    m.fit_quantiles()
+    m.fit_covariance()
+    #
+    m.save_model() # save model objects as pickle file
+    # Saved model can be loaded with: m.load_model()
+    # m.load_model()
+
+    # validate model
+    m.validate(ndays=validate_days,startdate=validate_date,tag=tag,use_hf_model=True,seed=validate_seed)
+
+    # generate scenarios
+    rls,data = m.generate_scenarios(nscen=example_nscen,cut_extreme=True,date=example_date,qrange=qrange,use_hf_model=True)
+    plot_scenarios_minmax(rls,data,m.path,tag=tag,qrange=qrange)
 
 if __name__ == "__main__":
 
@@ -2653,35 +2722,6 @@ if __name__ == "__main__":
     pd.set_option('display.max_rows',20)
     pd.set_option('display.max_columns',None)
 
-    # fit_model()
-    # plot_example_figures()
-    #%%
-    path = 'C:/Users/elisn/Box Sync/Python/wind_scenarios/data'
-    db = 'D:/Data/aemo_new.db'
-    date = '20190801'
-    nscen = 10
-    seed = 1
-    qrange = (0.05,0.95)
-    #
-    #
-    m = WindModel(name='v1',path=path,wpd_db=db,wfc_db=db)
-
-    m.load_model()
-
-
-    m.enddate = '20190810'
-
-
-
-    m.load_data()
-    m.filter_data()
-    # rls,data = m.generate_scenarios(nscen=nscen,date=date,qrange=qrange,seed=seed,hourly_values=False)
-
-
-    #%% reduce initial uncertainty
-
-    rls,wind_data = m.generate_scenarios(reduce_initial_errors=True,reduce_error_time=0.5)
-    rls.loc[:,('ARWF1',slice(None))].plot()
-
+    fit_model()
     #%%
 
