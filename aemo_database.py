@@ -635,14 +635,17 @@ def find_duid_predispatch(file_path='D:/Data/AEMO/PreDispatch',file_nr=0):
 
 def plot_wind_farm_map():
 
-    fig_path = 'C:/Users/elisn/Box Sync/Papers/C4 - Wind scenarios/Figures'
+    # fig_path = 'C:/Users/elisn/Box Sync/Papers/C4 - Wind scenarios/Figures'
+    fig_path = 'D:/wind_scenarios/Figures'
+    Path(fig_path).mkdir(exist_ok=True,parents=True)
     units = ['ARWF1','MACARTH1','BALDHWF1']
     """ Create Basemap projection corresponding to efas data """
     proj = 'laea'
     lat_0 = -38.95
+    lat_0 = -39.4
     lon_0 = 144.5
-    width = 0.9*1e6
-    height = 0.7*1e6
+    width = 1*1e6
+    height = 0.6*1e6
     # return m
     msize = 10
     offs1 = 2.5e4
@@ -654,7 +657,7 @@ def plot_wind_farm_map():
                 lat_0=lat_0, lon_0=lon_0)
 
     f,ax=plt.subplots()
-    f.set_size_inches(5,4)
+    f.set_size_inches(6,3.5)
     m.drawcoastlines()
     m.fillcontinents()
     # m.drawmeridians()
@@ -693,19 +696,26 @@ if __name__ == "__main__":
     pd.set_option('display.max_columns',None)
 
 
+    plot_wind_farm_map()
+
     #%% build database, from August 01 - October 31
 
-    db = Database('D:/Data/aemo_small.db')
+    # db = Database('D:/Data/aemo_small.db')
+    #
+    # db.add_forecast_data_full(data_path = 'D:/Data/AEMO/PreDispatch/zip2',nfiles=None,startdate='20190801',enddate='20191031')
+    #
+    # # add dispatch data for wind units only
+    # units = []
+    # for a in wind_duid:
+    #     units += wind_duid[a]
+    #
+    # db.add_dispatch_data(data_path='D:/Data/AEMO/Dispatch',nfiles=None,startdate='20190801',enddate='20191031',units=units)
 
-    db.add_forecast_data_full(data_path = 'D:/Data/AEMO/PreDispatch/zip2',nfiles=None,startdate='20190801',enddate='20191031')
 
-    # add dispatch data for wind units only
-    units = []
-    for a in wind_duid:
-        units += wind_duid[a]
-
-    db.add_dispatch_data(data_path='D:/Data/AEMO/Dispatch',nfiles=None,startdate='20190801',enddate='20191031',units=units)
-
+    # db = Database('D:/Data/aemo_new.db')
+    #
+    # df = db.select_forecast_data_full(lead_times=[1],startdate='20190901',enddate='20191030',categories=['ARWF1','MACARTH1','BALDHWF1'])
+    # df.plot()
 
 
 
