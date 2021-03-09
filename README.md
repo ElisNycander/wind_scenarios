@@ -1,5 +1,5 @@
 # wind_scenarios
-A model for generating wind power production scenarios based on open data from AEMO
+A model for generating wind power production scenarios based on open data from AEMO.
 
 To use the model, do the following steps:
 1. Clone git repository. It has the python code and the fitted model (saved as a pickle file).
@@ -15,3 +15,8 @@ Notes:
 1. The fitting of the quantile curves in fit_quantiles() has been implemented using the Gurobi python API, so currently
    you need to have Gurobi installed to fit the model. It would be straightforward to replace the optimization problem 
    with a Pyomo implementation.
+
+Credits:
+If you use the code in this repository, please cite the paper where it is presented:
+E. Nycaner and L. Söder, "An Open Model for Generating High Resolution Wind Power Production Scenarios",
+Preprint accepted for publication in IEEE PowerTech 2021, doi:10.36227/techrxiv.14178572.
