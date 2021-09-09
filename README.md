@@ -21,5 +21,6 @@ Credits:
 
 If you use the code in this repository, please cite the paper where it is presented:
 
-E. Nycander and L. Söder, "An Open Model for Generating High Resolution Wind Power Production Scenarios",
-Preprint accepted for publication in IEEE PowerTech 2021, https://doi.org/10.36227/techrxiv.14178572.
+E. Nycander and L. Söder, "An Open Model for Generating High Resolution Wind Power Production Scenarios," 
+2021 IEEE Madrid PowerTech, 2021, pp. 1-6, doi: 10.1109/PowerTech46648.2021.9495067.
+https://www.doi.org/10.1109/PowerTech46648.2021.9495067
